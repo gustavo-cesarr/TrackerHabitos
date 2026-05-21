@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracker de Hábitos</title>
+
+    <!-- Ícones do Google Material -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+    <!-- Fonte principal da aplicação -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Folha de estilo principal -->
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+
+  <body>
+
+    <!-- ========== CABEÇALHO ========== -->
+    <header class="header">
+      <div class="header__inner">
+
+        <!-- Logo e título -->
+        <div class="header__brand">
+          <span class="material-icons header__icon">self_improvement</span>
+          <h1 class="header__title">Tracker de Hábitos</h1>
+        </div>
+
+        <!-- Botão para abrir o modal de novo hábito -->
+        <button class="btn btn--primary" onclick="abrirModal()">
+          <span class="material-icons">add</span>
+          Novo Hábito
+        </button>
+
+      </div>
+    </header>
+
+    <!-- ========== CONTEÚDO PRINCIPAL ========== -->
+    <main class="main">
+
+      <!-- Indicador de carregamento exibido enquanto a API responde -->
+      <div id="loading" class="loading">
+        <span class="material-icons loading__icon">autorenew</span>
+        <p>Carregando hábitos...</p>
+      </div>
+
+      <!-- Mensagem exibida quando não há hábitos cadastrados -->
+      <div id="empty-state" class="empty-state hidden">
+        <span class="material-icons empty-state__icon">checklist</span>
+        <h2>Nenhum hábito cadastrado</h2>
+        <p>Crie seu primeiro hábito clicando em "Novo Hábito".</p>
+      </div>
+
+      <!-- Grade de cards de hábitos — preenchida dinamicamente pelo JS -->
+      <div id="habits-grid" class="habits-grid hidden"></div>
+
+    </main>
+
+    <!-- ========== MODAL: CRIAR / EDITAR HÁBITO ========== -->
+    <!--
+      O modal é exibido ao criar um novo hábito ou ao editar um existente.
+      O campo oculto #modal-habit-id guarda o ID quando estamos editando.
+    -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="fecharModal(event)">
+      <div class="modal">
+
+        <!-- Cabeçalho do modal -->
+        <div class="modal__header">
+          <h2 class="modal__title" id="modal-title">Novo Hábito</h2>
+          <button class="modal__close" onclick="fecharModal()">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <!-- Formulário de criação / edição -->
+        <form id="habit-form" class="modal__body" onsubmit="salvarHabito(event)">
+
+          <!-- Campo: nome do hábito -->
+          <div class="form-group">
+            <label class="form-label" for="input-name">Nome do hábito *</label>
+            <input
+              id="input-name"
+              class="form-input"
+              type="text"
+              placeholder="Ex: Beber 2L de água"
+              maxlength="255"
+              required
+            />
+          </div>
+
+          <!-- Campo: descrição opcional -->
+          <div class="form-group">
+            <label class="form-label" for="input-description">Descrição</label>
+            <textarea
+              id="input-description"
+              class="form-input form-textarea"
+              placeholder="Descreva seu hábito (opcional)"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <!-- Campo: status ativo / inativo (visível apenas na edição) -->
+          <div class="form-group form-group--checkbox" id="group-active" style="display:none">
+            <input id="input-active" type="checkbox" class="form-checkbox" />
+            <label class="form-label form-label--inline" for="input-active">Hábito ativo</label>
+          </div>
+
+          <!-- ID oculto — preenchido quando o modal estiver em modo de edição -->
+          <input type="hidden" id="modal-habit-id" value="" />
+
+          <!-- Rodapé do modal com ações -->
+          <div class="modal__footer">
+            <button type="button" class="btn btn--ghost" onclick="fecharModal()">Cancelar</button>
+            <button type="submit" class="btn btn--primary">Salvar</button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- ========== MODAL: HISTÓRICO DE LOGS ========== -->
+    <!--
+      Exibe todos os registros (check-ins) de um hábito específico.
+      Aberto ao clicar no ícone de histórico no card do hábito.
+    -->
+    <div id="logs-overlay" class="modal-overlay hidden" onclick="fecharLogs(event)">
+      <div class="modal modal--logs">
+
+        <!-- Cabeçalho do modal de logs -->
+        <div class="modal__header">
+          <h2 class="modal__title" id="logs-title">Histórico</h2>
+          <button class="modal__close" onclick="fecharLogs()">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
+        <!-- Lista de logs preenchida dinamicamente -->
+        <div class="modal__body">
+          <ul id="logs-list" class="logs-list"></ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========== TOAST DE NOTIFICAÇÃO ========== -->
+    <!-- Mensagem de feedback (sucesso / erro) exibida no canto inferior direito -->
+    <div id="toast" class="toast hidden">
+      <span class="material-icons" id="toast-icon">check_circle</span>
+      <span id="toast-msg"></span>
+    </div>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+
+      // ─── Constante: URL base da API ───────────────────────────────────────────
+      const API = '';   // Mesma origem — o FastAPI serve tanto a API quanto o HTML
+
+      // ─── Estado local da aplicação ────────────────────────────────────────────
+      let habitos = [];  // Lista de hábitos carregados da API
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      //  INICIALIZAÇÃO
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      // Carrega os hábitos assim que a página termina de carregar
+      document.addEventListener('DOMContentLoaded', carregarHabitos);
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      //  FUNÇÕES DE COMUNICAÇÃO COM A API
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      /**
+       * Busca todos os hábitos na API e renderiza os cards na tela.
+       */
+      async function carregarHabitos() {
+        mostrarLoading(true);
+        try {
+          const res  = await fetch(`${API}/habits`);
+          habitos    = await res.json();
+          renderizarHabitos(habitos);
+        } catch {
+          mostrarToast('Erro ao conectar com a API.', 'error');
+        } finally {
+          mostrarLoading(false);
+        }
+      }
+
+      /**
+       * Envia o formulário do modal para criar ou atualizar um hábito.
+       * @param {Event} e - Evento de submit do formulário
+       */
+      async function salvarHabito(e) {
+        e.preventDefault();   // Impede reload da página
+
+        // Coleta os valores dos campos do formulário
+        const id          = document.getElementById('modal-habit-id').value;
+        const name        = document.getElementById('input-name').value.trim();
+        const description = document.getElementById('input-description').value.trim();
+        // Se for criação (sem ID), ativo sempre é true; na edição lê o checkbox
+        const active      = id ? document.getElementById('input-active').checked : true;
+
+        // Monta o payload que será enviado à API
+        const payload = { name, description: description || null, active };
+
+        // Define se é criação (POST) ou edição (PUT) com base no ID
+        const url    = id ? `${API}/habits/${id}` : `${API}/habits`;
+        const method = id ? 'PUT' : 'POST';
+
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!res.ok) throw new Error();
+
+          mostrarToast(id ? 'Hábito atualizado!' : 'Hábito criado!', 'success');
+          fecharModal();
+          carregarHabitos();   // Recarrega a lista após salvar
+        } catch {
+          mostrarToast('Erro ao salvar hábito.', 'error');
+        }
+      }
+
+      /**
+       * Registra um check-in do hábito na data de hoje.
+       * @param {number} id - ID do hábito
+       */
+      async function marcarHabito(id) {
+        try {
+          const res = await fetch(`${API}/habits/${id}/check`, { method: 'POST' });
+          if (!res.ok) throw new Error();
+          mostrarToast('Check-in registrado!', 'success');
+          carregarHabitos();
+        } catch {
+          mostrarToast('Erro ao registrar check-in.', 'error');
+        }
+      }
+
+      /**
+       * Exclui um hábito após confirmação do usuário.
+       * @param {number} id - ID do hábito a ser excluído
+       */
+      async function excluirHabito(id) {
+        if (!confirm('Tem certeza que deseja excluir este hábito?')) return;
+
+        try {
+          const res = await fetch(`${API}/habits/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error();
+          mostrarToast('Hábito excluído.', 'success');
+          carregarHabitos();
+        } catch {
+          mostrarToast('Erro ao excluir hábito.', 'error');
+        }
+      }
+
+      /**
+       * Abre o modal de logs e exibe o histórico de check-ins do hábito.
+       * @param {number} id   - ID do hábito
+       * @param {string} nome - Nome do hábito (exibido no título do modal)
+       */
+      async function verLogs(id, nome) {
+        document.getElementById('logs-title').textContent = `Histórico — ${nome}`;
+        document.getElementById('logs-overlay').classList.remove('hidden');
+
+        const lista = document.getElementById('logs-list');
+        lista.innerHTML = '<li class="logs-list__loading">Carregando...</li>';
+
+        try {
+          const res  = await fetch(`${API}/habits/${id}/logs`);
+          const logs = await res.json();
+
+          // Renderiza cada log como um item de lista
+          if (logs.length === 0) {
+            lista.innerHTML = '<li class="logs-list__empty">Nenhum check-in registrado.</li>';
+          } else {
+            lista.innerHTML = logs
+              .map(log => `
+                <li class="logs-list__item">
+                  <span class="material-icons logs-list__icon">event_available</span>
+                  ${formatarData(log.done_date)}
+                </li>
+              `)
+              .join('');
+          }
+        } catch {
+          lista.innerHTML = '<li class="logs-list__empty">Erro ao carregar logs.</li>';
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      //  FUNÇÕES DE RENDERIZAÇÃO
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      /**
+       * Gera os cards de hábitos no DOM a partir da lista recebida da API.
+       * @param {Array} lista - Array de objetos de hábito
+       */
+      function renderizarHabitos(lista) {
+        const grid = document.getElementById('habits-grid');
+        const empty = document.getElementById('empty-state');
+
+        // Exibe o estado vazio se não houver hábitos
+        if (lista.length === 0) {
+          grid.classList.add('hidden');
+          empty.classList.remove('hidden');
+          return;
+        }
+
+        empty.classList.add('hidden');
+        grid.classList.remove('hidden');
+
+        // Gera o HTML de cada card
+        grid.innerHTML = lista.map(h => `
+          <div class="habit-card ${h.active ? '' : 'habit-card--inactive'}">
+
+            <!-- Indicador de status (bolinha colorida) -->
+            <span class="habit-card__status-dot ${h.active ? 'habit-card__status-dot--active' : ''}"></span>
+
+            <!-- Informações do hábito -->
+            <div class="habit-card__info">
+              <h3 class="habit-card__name">${escaparHTML(h.name)}</h3>
+              ${h.description
+                ? `<p class="habit-card__desc">${escaparHTML(h.description)}</p>`
+                : ''}
+              <span class="habit-card__date">
+                Criado em ${formatarData(h.created_at)}
+              </span>
+            </div>
+
+            <!-- Ações do card -->
+            <div class="habit-card__actions">
+
+              <!-- Botão de check-in: registra hábito feito hoje -->
+              <button
+                class="icon-btn icon-btn--check"
+                title="Marcar como feito hoje"
+                onclick="marcarHabito(${h.id})"
+              >
+                <span class="material-icons">check_circle</span>
+              </button>
+
+              <!-- Botão de histórico: abre modal de logs -->
+              <button
+                class="icon-btn icon-btn--log"
+                title="Ver histórico"
+                onclick="verLogs(${h.id}, '${escaparHTML(h.name)}')"
+              >
+                <span class="material-icons">history</span>
+              </button>
+
+              <!-- Botão de editar: abre modal de edição -->
+              <button
+                class="icon-btn icon-btn--edit"
+                title="Editar hábito"
+                onclick="abrirModal(${h.id})"
+              >
+                <span class="material-icons">edit</span>
+              </button>
+
+              <!-- Botão de excluir: remove o hábito -->
+              <button
+                class="icon-btn icon-btn--delete"
+                title="Excluir hábito"
+                onclick="excluirHabito(${h.id})"
+              >
+                <span class="material-icons">delete</span>
+              </button>
+
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      //  FUNÇÕES DO MODAL DE CRIAÇÃO / EDIÇÃO
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      /**
+       * Abre o modal.
+       * - Sem parâmetro: modo criação.
+       * - Com ID: modo edição — preenche os campos com os dados do hábito.
+       * @param {number|null} id - ID do hábito a editar (opcional)
+       */
+      function abrirModal(id = null) {
+        document.getElementById('habit-form').reset();
+        document.getElementById('modal-habit-id').value = '';
+
+        if (id) {
+          // Modo edição: busca o hábito na lista local e preenche o form
+          const h = habitos.find(h => h.id === id);
+          if (!h) return;
+
+          document.getElementById('modal-title').textContent        = 'Editar Hábito';
+          document.getElementById('modal-habit-id').value           = h.id;
+          document.getElementById('input-name').value               = h.name;
+          document.getElementById('input-description').value        = h.description || '';
+          document.getElementById('input-active').checked           = h.active;
+          document.getElementById('group-active').style.display     = 'flex';
+        } else {
+          // Modo criação: título padrão e campo ativo oculto
+          document.getElementById('modal-title').textContent        = 'Novo Hábito';
+          document.getElementById('group-active').style.display     = 'none';
+        }
+
+        document.getElementById('modal-overlay').classList.remove('hidden');
+      }
+
+      /**
+       * Fecha o modal de criação / edição.
+       * Ao clicar no overlay (fundo escuro) também fecha.
+       * @param {Event|null} e - Evento de clique (opcional)
+       */
+      function fecharModal(e) {
+        if (e && e.target !== document.getElementById('modal-overlay')) return;
+        document.getElementById('modal-overlay').classList.add('hidden');
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      //  FUNÇÕES DO MODAL DE LOGS
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      /**
+       * Fecha o modal de histórico de logs.
+       * @param {Event|null} e - Evento de clique (opcional)
+       */
+      function fecharLogs(e) {
+        if (e && e.target !== document.getElementById('logs-overlay')) return;
+        document.getElementById('logs-overlay').classList.add('hidden');
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      //  FUNÇÕES AUXILIARES
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      /**
+       * Exibe ou oculta o indicador de carregamento.
+       * @param {boolean} visivel
+       */
+      function mostrarLoading(visivel) {
+        document.getElementById('loading').classList.toggle('hidden', !visivel);
+        document.getElementById('habits-grid').classList.toggle('hidden', visivel);
+      }
+
+      /**
+       * Exibe um toast de notificação no canto inferior direito.
+       * @param {string} msg  - Mensagem a exibir
+       * @param {string} tipo - 'success' | 'error'
+       */
+      function mostrarToast(msg, tipo = 'success') {
+        const toast = document.getElementById('toast');
+        const icon  = document.getElementById('toast-icon');
+        const text  = document.getElementById('toast-msg');
+
+        // Define ícone e cor conforme o tipo
+        icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
+        toast.className  = `toast toast--${tipo}`;
+        text.textContent = msg;
+
+        // Exibe por 3 segundos e depois oculta
+        setTimeout(() => toast.classList.add('hidden'), 3000);
+      }
+
+      /**
+       * Formata uma string de data ISO para o padrão brasileiro DD/MM/AAAA.
+       * @param {string} iso - Data no formato ISO (ex: "2025-05-20" ou "2025-05-20T...")
+       * @returns {string}
+       */
+      function formatarData(iso) {
+        const d = new Date(iso + (iso.includes('T') ? '' : 'T00:00:00'));
+        return d.toLocaleDateString('pt-BR');
+      }
+
+      /**
+       * Escapa caracteres HTML especiais para evitar XSS ao inserir texto no DOM.
+       * @param {string} str
+       * @returns {string}
+       */
+      function escaparHTML(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+    </script>
+  </body>
+</html>

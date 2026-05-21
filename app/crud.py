@@ -1,9 +1,13 @@
 from sqlalchemy.orm import Session
 from app import models, schemas
 from datetime import date
+from app.models import Habit
 
 def get_habit(db: Session, habit_id: int):
-    return db.query(models.Habit).filter(models.Habit.active == True).first()
+    return db.query(models.Habit).filter(models.Habit.id == habit_id).first()
+
+def get_habits(db: Session):
+    return db.query(models.Habit).all()    
 
 def get_habit_by_id(db: Session, habit_id: int):
     return db.query(models.Habit).filter(models.Habit.id == habit_id).first()
@@ -50,10 +54,10 @@ def delete_habit(db: Session, habit_id: int):
     return db_habit
 
 
-def check_habit(db: Session, habit_id: int):
+def check_habit(db: Session, id_habits: int):
 
     existing_log = db.query(models.HabitLog).filter(
-        models.HabitLog.habit_id == habit_id,
+        models.HabitLog.id_habits == id_habits,
         models.HabitLog.done_date == date.today()
     ).first()
 
@@ -61,7 +65,7 @@ def check_habit(db: Session, habit_id: int):
         return existing_log
 
     log = models.HabitLog(
-        habit_id=habit_id,
+        id_habits=id_habits,
         done_date=date.today()
     )
 
@@ -75,9 +79,9 @@ def check_habit(db: Session, habit_id: int):
 
 def get_logs_by_habit(
     db: Session,
-    habit_id: int
+    id_habits: int
 ):
 
     return db.query(models.HabitLog).filter(
-        models.HabitLog.habit_id == habit_id
+        models.HabitLog.id_habits == id_habits
     ).all()

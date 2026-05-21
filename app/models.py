@@ -17,7 +17,7 @@ class Habit(Base):
 class HabitLog(Base):
     __tablename__ = 'habits_logs'
     id = Column(Integer, primary_key=True, index=True)
-    habit_id = Column(Integer, ForeignKey('habits.id'), nullable=False)
+    id_habits = Column(Integer, ForeignKey('habits.id'), nullable=False)
     done_date = Column(Date, nullable=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     habit = relationship("Habit", back_populates="logs")

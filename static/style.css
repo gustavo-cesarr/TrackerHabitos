@@ -1,0 +1,551 @@
+/* ============================================================
+   VARIÁVEIS GLOBAIS
+   Centraliza cores, tamanhos e transições para fácil manutenção
+   ============================================================ */
+:root {
+  /* Paleta principal */
+  --color-bg:        #0f172a;   /* fundo da página */
+  --color-surface:   #1e293b;   /* fundo dos cards e modais */
+  --color-border:    #334155;   /* bordas sutis */
+  --color-primary:   #6366f1;   /* cor de destaque (roxo-índigo) */
+  --color-primary-h: #4f46e5;   /* hover do primário */
+  --color-success:   #22c55e;   /* verde: check-in / sucesso */
+  --color-warning:   #f59e0b;   /* amarelo: editar */
+  --color-danger:    #ef4444;   /* vermelho: excluir / erro */
+  --color-text:      #f1f5f9;   /* texto principal */
+  --color-muted:     #94a3b8;   /* texto secundário / datas */
+
+  /* Tipografia */
+  --font:    'Inter', sans-serif;
+  --radius:  12px;              /* arredondamento padrão */
+  --shadow:  0 4px 24px rgba(0, 0, 0, 0.4);
+
+  /* Velocidade padrão de animações */
+  --transition: 0.2s ease;
+}
+
+/* ============================================================
+   RESET E BASE
+   Remove margens padrão do navegador e define box-model
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   CABEÇALHO
+   Faixa superior com logo, título e botão de novo hábito
+   ============================================================ */
+.header {
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;       /* Fica fixo no topo ao rolar a página */
+  top: 0;
+  z-index: 100;
+}
+
+.header__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Agrupa o ícone e o título da marca */
+.header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header__icon {
+  font-size: 28px;
+  color: var(--color-primary);
+}
+
+.header__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* ============================================================
+   CONTEÚDO PRINCIPAL
+   Área central onde os cards são exibidos
+   ============================================================ */
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* ============================================================
+   ESTADOS: LOADING / VAZIO
+   Feedback visual enquanto a API carrega ou não há hábitos
+   ============================================================ */
+.loading,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 24px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+/* Animação de rotação no ícone de carregamento */
+.loading__icon {
+  font-size: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state__icon {
+  font-size: 56px;
+  color: var(--color-primary);
+  opacity: 0.4;
+}
+
+.empty-state h2 {
+  font-size: 1.2rem;
+  color: var(--color-text);
+}
+
+/* ============================================================
+   GRADE DE HÁBITOS
+   Layout responsivo em colunas para os cards
+   ============================================================ */
+.habits-grid {
+  display: grid;
+  /* Colunas que se adaptam ao espaço disponível (mínimo 280px) */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* ============================================================
+   CARD DE HÁBITO
+   Caixa com informações e ações de cada hábito
+   ============================================================ */
+.habit-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+/* Efeito de elevação ao passar o mouse */
+.habit-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+/* Estilo diferenciado para hábitos inativos */
+.habit-card--inactive {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+/* Bolinha de status no canto superior direito */
+.habit-card__status-dot {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-border);   /* cinza = inativo */
+}
+
+.habit-card__status-dot--active {
+  background-color: var(--color-success);  /* verde = ativo */
+  box-shadow: 0 0 6px var(--color-success);
+}
+
+/* Área de texto do card */
+.habit-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.habit-card__name {
+  font-size: 1rem;
+  font-weight: 600;
+  padding-right: 20px;  /* evita sobrepor a bolinha de status */
+}
+
+.habit-card__desc {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.habit-card__date {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+/* Linha de botões de ação na parte inferior do card */
+.habit-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;    /* Empurra para o fim do card */
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ============================================================
+   BOTÕES DE ÍCONE (ações dos cards)
+   Botões circulares pequenos com ícone e cor temática
+   ============================================================ */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color var(--transition), transform var(--transition);
+  background-color: transparent;
+  color: var(--color-muted);
+}
+
+.icon-btn .material-icons {
+  font-size: 20px;
+}
+
+/* Efeito ao pressionar o botão */
+.icon-btn:active {
+  transform: scale(0.9);
+}
+
+/* Variações de cor por tipo de ação */
+.icon-btn--check:hover  { background-color: rgba(34, 197, 94, 0.15);  color: var(--color-success); }
+.icon-btn--log:hover    { background-color: rgba(99, 102, 241, 0.15); color: var(--color-primary); }
+.icon-btn--edit:hover   { background-color: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
+.icon-btn--delete:hover { background-color: rgba(239, 68, 68, 0.15);  color: var(--color-danger);  }
+
+/* ============================================================
+   BOTÕES GERAIS
+   Botão primário (roxo) e fantasma (contorno)
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+
+.btn--primary {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  background-color: var(--color-primary-h);
+}
+
+.btn--ghost {
+  background-color: transparent;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+.btn--ghost:hover {
+  background-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* ============================================================
+   MODAL (overlay + caixa de diálogo)
+   Fundo semi-transparente com a caixa centralizada
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;                              /* cobre toda a tela */
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+
+/* Animação de aparecimento do overlay */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Caixa do modal */
+.modal {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow);
+  animation: slideUp 0.2s ease;
+}
+
+/* Animação de entrada da caixa */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Modal de logs um pouco maior para acomodar a lista */
+.modal--logs {
+  max-width: 400px;
+}
+
+/* ── Cabeçalho do modal ── */
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Botão X para fechar o modal */
+.modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.modal__close:hover {
+  color: var(--color-text);
+  background-color: var(--color-border);
+}
+
+/* ── Corpo do modal ── */
+.modal__body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── Rodapé do modal com botões ── */
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+/* ============================================================
+   FORMULÁRIO
+   Campos de texto e checkbox usados no modal de hábito
+   ============================================================ */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Grupo de checkbox (label ao lado do input) */
+.form-group--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.form-label--inline {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Estilo unificado para inputs e textarea */
+.form-input {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  transition: border-color var(--transition);
+  width: 100%;
+}
+
+/* Destaque azul/roxo ao focar no campo */
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.form-textarea {
+  resize: vertical;    /* Permite redimensionar apenas verticalmente */
+  min-height: 80px;
+}
+
+.form-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);   /* Cor da caixa de seleção */
+  cursor: pointer;
+}
+
+/* ============================================================
+   LISTA DE LOGS
+   Itens do histórico de check-ins no modal de logs
+   ============================================================ */
+.logs-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;    /* Scroll interno se houver muitos logs */
+}
+
+/* Item individual do log */
+.logs-list__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.logs-list__icon {
+  color: var(--color-success);
+  font-size: 18px;
+}
+
+/* Texto de estado vazio / carregando dentro da lista */
+.logs-list__empty,
+.logs-list__loading {
+  color: var(--color-muted);
+  text-align: center;
+  padding: 24px;
+  font-size: 0.9rem;
+}
+
+/* ============================================================
+   TOAST DE NOTIFICAÇÃO
+   Mensagem flutuante no canto inferior direito da tela
+   ============================================================ */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  animation: slideLeft 0.3s ease;
+}
+
+/* Animação de entrada do toast pela direita */
+@keyframes slideLeft {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Variações de cor por tipo */
+.toast--success {
+  background-color: #14532d;
+  border: 1px solid var(--color-success);
+  color: #bbf7d0;
+}
+
+.toast--error {
+  background-color: #7f1d1d;
+  border: 1px solid var(--color-danger);
+  color: #fecaca;
+}
+
+/* ============================================================
+   UTILITÁRIO: HIDDEN
+   Oculta qualquer elemento — controlado pelo JavaScript
+   ============================================================ */
+.hidden {
+  display: none !important;
+}
+
+/* ============================================================
+   RESPONSIVIDADE
+   Ajustes para telas menores (celular)
+   ============================================================ */
+@media (max-width: 480px) {
+
+  /* Cabeçalho em coluna no celular */
+  .header__inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Cards ocupam largura total */
+  .habits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modal ocupa quase toda a tela */
+  .modal {
+    max-width: 100%;
+  }
+}

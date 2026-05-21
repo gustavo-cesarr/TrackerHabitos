@@ -17,12 +17,12 @@ class HabitResponse(HabitBase):
         model_config = {"from_attributes": True}
 
 class HabitLogCreate(BaseModel):
-    habit_id: int
+    id_habits: int
     done_date: date
 
 class HabitLogResponse(HabitLogCreate):
     id: int
-    habit_id: int
+    id_habits: int
     done_date: date
     created_at: datetime
 
