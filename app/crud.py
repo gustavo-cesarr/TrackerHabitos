@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from datetime import date
 
-def get_habit(db: Session):
-    return db.query(models.Habit).filter(models.Habit.active == True).all()
+def get_habit(db: Session, habit_id: int):
+    return db.query(models.Habit).filter(models.Habit.active == True).first()
 
 def get_habit_by_id(db: Session, habit_id: int):
     return db.query(models.Habit).filter(models.Habit.id == habit_id).first()
